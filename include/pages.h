@@ -188,6 +188,7 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 							xmlns="http://www.w3.org/2000/svg"
 						>
 							<path
+								id="front-far"
 								d="M1.41423 40.6994C0.633185 39.9184 0.637892 38.6452 1.43044 37.8758C53.05 -12.2344 135.521 -12.2339 187.14 37.8758C187.933 38.6452 187.937 39.9184 187.156 40.6994L182.017 45.8387C181.236 46.6198 179.965 46.613 179.172 45.8447C131.947 0.126877 56.6231 0.126877 9.3989 45.8447C8.6053 46.613 7.33457 46.6197 6.55353 45.8387L1.41423 40.6994Z"
 								fill="#4E4E4E"
 							/>
@@ -202,6 +203,7 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 							xmlns="http://www.w3.org/2000/svg"
 						>
 							<path
+								id="front-mid-far"
 								d="M1.13084 35.242C0.349787 34.4609 0.353876 33.188 1.14851 32.4208C44.7136 -9.64099 114.087 -9.64057 157.651 32.4208C158.446 33.188 158.45 34.4609 157.669 35.242L153.764 39.1473C152.982 39.9283 151.712 39.9219 150.917 39.1559C111.067 0.80572 47.733 0.80572 7.88314 39.1559C7.08726 39.9219 5.81721 39.9283 5.03616 39.1473L1.13084 35.242Z"
 								fill="#4E4E4E"
 							/>
@@ -216,6 +218,7 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 							xmlns="http://www.w3.org/2000/svg"
 						>
 							<path
+								id="front-mid"
 								d="M1.42449 28.6494C0.643445 27.8684 0.646579 26.5958 1.44445 25.8319C36.4755 -7.70538 91.9749 -7.70504 127.006 25.8319C127.803 26.5958 127.807 27.8684 127.026 28.6494L124.427 31.2476C123.646 32.0286 122.377 32.0225 121.578 31.2602C89.5416 0.713163 38.9085 0.713163 6.8721 31.2602C6.0727 32.0225 4.80368 32.0286 4.02264 31.2476L1.42449 28.6494Z"
 								fill="#4E4E4E"
 							/>
@@ -230,6 +233,7 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 							xmlns="http://www.w3.org/2000/svg"
 						>
 							<path
+								id="front-close"
 								d="M0.64358 18.8161C-0.137469 18.035 -0.136893 16.7633 0.669688 16.0086C23.4737 -5.3273 59.1106 -5.32709 81.9144 16.0086C82.721 16.7633 82.7216 18.035 81.9405 18.8161L81.2144 19.5422C80.4333 20.3233 79.1671 20.318 78.3582 19.5659C57.5177 0.186597 25.0665 0.186598 4.22589 19.5659C3.417 20.318 2.15077 20.3233 1.36973 19.5422L0.64358 18.8161Z"
 								fill="#4E4E4E"
 							/>
@@ -333,13 +337,43 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 				externalStrokeColor: "#007AFF",
 			});
 
-			const socket = new WebSocket(`ws://${window.location.host}`);
+			const socket = new WebSocket(`ws://${window.location.host}/ws`);
 			socket.onopen = () => {
 				console.log("Conexão WebSocket aberta com sucesso.");
 			};
 
 			socket.onmessage = (event) => {
-				console.log(`Mensagem recebida do servidor: ${event.data}`);
+				const data = JSON.parse(event.data);
+
+				if (data.frontSensor <= 10) {
+					document.getElementById("front-close").style.fill = "red";
+					document.getElementById("front-mid").style.fill = "#4E4E4E";
+					document.getElementById("front-mid-far").style.fill = "#4E4E4E";
+					document.getElementById("front-far").style.fill = "#4E4E4E";
+				}
+				else if (data.frontSensor > 10 && data.frontSensor <= 17) {
+					document.getElementById("front-close").style.fill = "#4E4E4E";
+					document.getElementById("front-mid").style.fill = "yellow";
+					document.getElementById("front-mid-far").style.fill = "#4E4E4E";
+					document.getElementById("front-far").style.fill = "#4E4E4E";
+				}
+				else if (data.frontSensor > 17 && data.frontSensor <= 23) {
+					document.getElementById("front-close").style.fill = "#4E4E4E";
+					document.getElementById("front-mid").style.fill = "#4E4E4E";
+					document.getElementById("front-mid-far").style.fill = "yellow";
+					document.getElementById("front-far").style.fill = "#4E4E4E";
+				}
+				else if (data.frontSensor > 23 && data.frontSensor <= 30) {
+					document.getElementById("front-close").style.fill = "#4E4E4E";
+					document.getElementById("front-mid").style.fill = "#4E4E4E";
+					document.getElementById("front-mid-far").style.fill = "#4E4E4E";
+					document.getElementById("front-far").style.fill = "green";
+				} else {
+					document.getElementById("front-close").style.fill = "#4E4E4E";
+					document.getElementById("front-mid").style.fill = "#4E4E4E";
+					document.getElementById("front-mid-far").style.fill = "#4E4E4E";
+					document.getElementById("front-far").style.fill = "#4E4E4E";
+				}
 			};
 
 			socket.onclose = () => {
@@ -352,7 +386,7 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 
 			setInterval(() => {
 				const dir = joystick.GetDir();
-				if (!socket.readyState || dir === "C") return;
+				if (!socket.readyState) return;
 
 				if (dir === "N" || dir === "NE" || dir === "NW") {
 					socket.send("forward");
@@ -362,6 +396,8 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 					socket.send("left");
 				} else if (dir === "E") {
 					socket.send("right");
+				} else {
+					socket.send("stop");
 				}
 			}, 500);
 		</script>

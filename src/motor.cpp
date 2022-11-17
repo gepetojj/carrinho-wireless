@@ -18,9 +18,6 @@ void Motor::moveForward()
 {
 	digitalWrite(this->npPin, HIGH);
 	digitalWrite(this->nnPin, LOW);
-
-	delay(300);
-	this->stopMovement();
 }
 
 void Motor::moveForward(unsigned int speed)
@@ -33,9 +30,6 @@ void Motor::moveBackward()
 {
 	digitalWrite(this->npPin, LOW);
 	digitalWrite(this->nnPin, HIGH);
-
-	delay(300);
-	this->stopMovement();
 }
 
 void Motor::moveBackward(unsigned int speed)

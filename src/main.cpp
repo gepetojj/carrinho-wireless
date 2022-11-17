@@ -27,14 +27,14 @@
 
 #define LEFT_WHEEL_NP_PIN 25
 #define LEFT_WHEEL_NN_PIN 26
-#define LEFT_WHEEL_VEL_PIN 27
+#define LEFT_WHEEL_VEL_PIN 33
 
 #define RIGHT_WHEEL_NP_PIN 14
-#define RIGHT_WHEEL_NN_PIN 12
-#define RIGHT_WHEEL_VEL_PIN 13
+#define RIGHT_WHEEL_NN_PIN 27
+#define RIGHT_WHEEL_VEL_PIN 12
 
-#define FRONT_SENSOR_TRIG_PIN 19
-#define FRONT_SENSOR_ECHO_PIN 18
+#define FRONT_SENSOR_TRIG_PIN 32
+#define FRONT_SENSOR_ECHO_PIN 35
 
 #define BACK_SENSOR_TRIG_PIN 5
 #define BACK_SENSOR_ECHO_PIN 17
@@ -43,7 +43,7 @@ Motor leftWheel(LEFT_WHEEL_NP_PIN, LEFT_WHEEL_NN_PIN, LEFT_WHEEL_VEL_PIN);
 Motor rightWheel(RIGHT_WHEEL_NP_PIN, RIGHT_WHEEL_NN_PIN, RIGHT_WHEEL_VEL_PIN);
 
 DistanceSensor frontSensor(FRONT_SENSOR_TRIG_PIN, FRONT_SENSOR_ECHO_PIN);
-DistanceSensor backSensor(BACK_SENSOR_TRIG_PIN, BACK_SENSOR_ECHO_PIN);
+// DistanceSensor backSensor(BACK_SENSOR_TRIG_PIN, BACK_SENSOR_ECHO_PIN);
 
 DynamicJsonDocument doc(1024);
 DNSServer dns;
@@ -177,7 +177,7 @@ void tryWiFiConnection()
 	}
 }
 
-// !! Métodos do WebSocket!!
+// !! Métodos do WebSocket !!
 
 void onDataHandler(void *arg, uint8_t *data, size_t len)
 {
@@ -189,23 +189,33 @@ void onDataHandler(void *arg, uint8_t *data, size_t len)
 		data[len] = 0;
 		if (strcmp((char *)data, "forward") == 0)
 		{
+			Serial.println("[Motors] Movimentando motores para frente.");
 			leftWheel.moveForward();
 			rightWheel.moveForward();
 		}
 		else if (strcmp((char *)data, "backward") == 0)
 		{
+			Serial.println("[Motors] Movimentando motores para tras.");
 			leftWheel.moveBackward();
 			rightWheel.moveBackward();
 		}
 		else if (strcmp((char *)data, "right") == 0)
 		{
+			Serial.println("[Motors] Movimentando motores para a direita.");
 			leftWheel.moveForward();
 			rightWheel.moveBackward();
 		}
 		else if (strcmp((char *)data, "left") == 0)
 		{
+			Serial.println("[Motors] Movimentando motores para a esquerda.");
 			leftWheel.moveBackward();
 			rightWheel.moveForward();
+		}
+		else if (strcmp((char *)data, "stop") == 0)
+		{
+			Serial.println("[Motors] Parando motores.");
+			leftWheel.stopMovement();
+			rightWheel.stopMovement();
 		}
 	}
 }
@@ -280,6 +290,7 @@ void setup()
 	server.reset();
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *req)
 			  { req->send_P(200, "text/html", MAIN_PAGE); });
+	server.begin();
 
 	// Inicializa o servidor WebSocket
 	ws.onEvent(onEventHandler);
@@ -295,11 +306,11 @@ void loop()
 
 	// Envia para os clientes as leituras dos sensores em cm
 	doc["frontSensor"] = frontSensor.readDistance();
-	doc["backSensor"] = backSensor.readDistance();
+	doc["backSensor"] = 0; // backSensor.readDistance();
 
 	String obj = "";
 	serializeJson(doc, obj);
 	ws.textAll(obj);
 
-	delay(500);
+	delay(200);
 }
