@@ -265,6 +265,7 @@ void setup()
 
 	while (!SETUP_DONE)
 	{
+		Serial.println("[Setup] Aguardando Captive Portal.");
 		dns.processNextRequest();
 		delay(10);
 
