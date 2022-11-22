@@ -12,6 +12,9 @@ Motor::Motor(int npPin, int nnPin, int velPin)
 	pinMode(npPin, OUTPUT);
 	pinMode(nnPin, OUTPUT);
 	pinMode(velPin, OUTPUT);
+
+	// Ativa o motor no driver
+	digitalWrite(velPin, HIGH);
 }
 
 void Motor::moveForward()

@@ -10,12 +10,11 @@
 #include "motor.h"
 #include "pages.h"
 
-#define AP_NAME "Carrinho Wireless"
+#define DEVICE_NAME "Carrinho Wireless"
 #define PREF_SETUP_KEY "setupDone"
 #define PREF_SSID_KEY "lastSSID"
 #define PREF_PASS_KEY "lastPASS"
 
-#define MDNS_DEVICE_NAME "Carrinho Wireless"
 #define SERVICE_NAME "descobrimento"
 #define SERVICE_PROTOCOL "udp"
 #define SERVICE_PORT 5622
@@ -25,19 +24,19 @@
 // NN - Normalmente negativo
 // VEL - Pino que controla a velocidade (variação na frequência)
 
-#define LEFT_WHEEL_NP_PIN 25
-#define LEFT_WHEEL_NN_PIN 26
-#define LEFT_WHEEL_VEL_PIN 33
+#define LEFT_WHEEL_NP_PIN 18
+#define LEFT_WHEEL_NN_PIN 19
+#define LEFT_WHEEL_VEL_PIN 21
 
-#define RIGHT_WHEEL_NP_PIN 14
-#define RIGHT_WHEEL_NN_PIN 27
-#define RIGHT_WHEEL_VEL_PIN 12
+#define RIGHT_WHEEL_NP_PIN 17
+#define RIGHT_WHEEL_NN_PIN 5
+#define RIGHT_WHEEL_VEL_PIN 16
 
-#define FRONT_SENSOR_TRIG_PIN 32
-#define FRONT_SENSOR_ECHO_PIN 35
+#define FRONT_SENSOR_TRIG_PIN 3
+#define FRONT_SENSOR_ECHO_PIN 1
 
-#define BACK_SENSOR_TRIG_PIN 5
-#define BACK_SENSOR_ECHO_PIN 17
+#define BACK_SENSOR_TRIG_PIN 22
+#define BACK_SENSOR_ECHO_PIN 23
 
 Motor leftWheel(LEFT_WHEEL_NP_PIN, LEFT_WHEEL_NN_PIN, LEFT_WHEEL_VEL_PIN);
 Motor rightWheel(RIGHT_WHEEL_NP_PIN, RIGHT_WHEEL_NN_PIN, RIGHT_WHEEL_VEL_PIN);
@@ -75,30 +74,10 @@ public:
 	}
 };
 
-String wifiConnectionsProcessor(const String &var)
-{
-	int networks = WiFi.scanNetworks();
-	if (networks == 0)
-	{
-		Serial.println("[WiFi Scan] Nenhuma conexão WiFi foi encontrada.");
-		return "Erro! Tente novamente.";
-	}
-
-	for (int i = 0; i < networks; i++)
-	{
-		if (var == ("NW_" + String(i)))
-		{
-			return WiFi.SSID(i);
-		}
-	}
-
-	return "Opção inválida.";
-}
-
 void setupCaptiveServer()
 {
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *req)
-			  { req->send_P(200, "text/html", CAPTIVE_PAGE, wifiConnectionsProcessor); });
+			  { req->send_P(200, "text/html", CAPTIVE_PAGE); });
 
 	server.on("/set", HTTP_GET, [](AsyncWebServerRequest *req)
 			  {
@@ -119,7 +98,7 @@ void setupCaptiveServer()
 void startCaptivePortal()
 {
 	WiFi.mode(WIFI_AP);
-	WiFi.softAP(AP_NAME);
+	WiFi.softAP(DEVICE_NAME);
 	Serial.println("[CaptivePortal] Modo WiFi alterado para AP.");
 
 	setupCaptiveServer();
@@ -277,7 +256,7 @@ void setup()
 	}
 
 	// Inicia o serviço de descobrimento do carrinho
-	if (!MDNS.begin(MDNS_DEVICE_NAME))
+	if (!MDNS.begin(DEVICE_NAME))
 	{
 		Serial.println("[Setup] Não foi possível iniciar o servico de descobrimento.");
 	}

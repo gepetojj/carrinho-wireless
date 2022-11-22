@@ -79,13 +79,7 @@ const char CAPTIVE_PAGE[] PROGMEM = R"rawliteral(
 			alterem, este procedimento será necessário novamente.
 		</p>
 		<form action="/set" method="get">
-			<select name="ssid" id="ssid" title="SSID">
-				<option value="%NW_0%">%NW_0%</option>
-				<option value="%NW_1%">%NW_1%</option>
-				<option value="%NW_2%">%NW_2%</option>
-				<option value="%NW_3%">%NW_3%</option>
-				<option value="%NW_4%">%NW_4%</option>
-			</select>
+			<input type="text" name="ssid" id="ssid" placeholder="SSID:" />
 			<input type="password" name="pass" id="pass" placeholder="Senha:" />
 			<button type="submit">Conectar</button>
 		</form>
@@ -367,7 +361,7 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 					document.getElementById("front-close").style.fill = "#4E4E4E";
 					document.getElementById("front-mid").style.fill = "#4E4E4E";
 					document.getElementById("front-mid-far").style.fill = "#4E4E4E";
-					document.getElementById("front-far").style.fill = "green";
+					document.getElementById("front-far").style.fill = "yellow";
 				} else {
 					document.getElementById("front-close").style.fill = "#4E4E4E";
 					document.getElementById("front-mid").style.fill = "#4E4E4E";
