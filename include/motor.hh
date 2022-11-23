@@ -1,7 +1,7 @@
 class Motor
 {
 public:
-	Motor(int npPin, int nnPin, int velPin);
+	Motor(int npPin, int nnPin, int velPin, bool invert);
 
 	void moveForward();
 	void moveForward(unsigned int speed);
@@ -15,4 +15,5 @@ private:
 	int npPin;
 	int nnPin;
 	int velPin;
+	bool invert;
 };

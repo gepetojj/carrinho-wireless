@@ -339,25 +339,25 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 			socket.onmessage = (event) => {
 				const data = JSON.parse(event.data);
 
-				if (data.frontSensor <= 10) {
+				if (data.frontSensor <= 12) {
 					document.getElementById("front-close").style.fill = "red";
 					document.getElementById("front-mid").style.fill = "#4E4E4E";
 					document.getElementById("front-mid-far").style.fill = "#4E4E4E";
 					document.getElementById("front-far").style.fill = "#4E4E4E";
 				}
-				else if (data.frontSensor > 10 && data.frontSensor <= 17) {
+				else if (data.frontSensor > 12 && data.frontSensor <= 20) {
 					document.getElementById("front-close").style.fill = "#4E4E4E";
 					document.getElementById("front-mid").style.fill = "yellow";
 					document.getElementById("front-mid-far").style.fill = "#4E4E4E";
 					document.getElementById("front-far").style.fill = "#4E4E4E";
 				}
-				else if (data.frontSensor > 17 && data.frontSensor <= 23) {
+				else if (data.frontSensor > 20 && data.frontSensor <= 28) {
 					document.getElementById("front-close").style.fill = "#4E4E4E";
 					document.getElementById("front-mid").style.fill = "#4E4E4E";
 					document.getElementById("front-mid-far").style.fill = "yellow";
 					document.getElementById("front-far").style.fill = "#4E4E4E";
 				}
-				else if (data.frontSensor > 23 && data.frontSensor <= 30) {
+				else if (data.frontSensor > 28 && data.frontSensor <= 36) {
 					document.getElementById("front-close").style.fill = "#4E4E4E";
 					document.getElementById("front-mid").style.fill = "#4E4E4E";
 					document.getElementById("front-mid-far").style.fill = "#4E4E4E";
@@ -393,7 +393,7 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 				} else {
 					socket.send("stop");
 				}
-			}, 500);
+			}, 100);
 		</script>
 	</body>
 </html>

@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 #include "esp32-hal-gpio.h"
-#include "distanceSensor.h"
+#include "distanceSensor.hh"
 
 DistanceSensor::DistanceSensor(int trigPin, int echoPin)
 {
