@@ -5,7 +5,6 @@
 #include <WiFi.h>
 
 #include "ESPAsyncWebServer.h"
-#include "ESPmDNS.h"
 #include "distanceSensor.hh"
 #include "motor.hh"
 #include "pages.hh"
@@ -15,22 +14,13 @@
 #define PREF_SSID_KEY "lastSSID"
 #define PREF_PASS_KEY "lastPASS"
 
-#define SERVICE_NAME "_descobrimento"
-#define SERVICE_PROTOCOL "_udp"
-#define SERVICE_PORT 5600
+#define LEFT_WHEEL_IN1_PIN 32
+#define LEFT_WHEEL_IN2_PIN 33
+#define LEFT_WHEEL_VEL_PIN 25
 
-// Convenções:
-// NP - Normalmente positivo
-// NN - Normalmente negativo
-// VEL - Pino que controla a velocidade (variação na frequência)
-
-#define LEFT_WHEEL_NP_PIN 18
-#define LEFT_WHEEL_NN_PIN 19
-#define LEFT_WHEEL_VEL_PIN 21
-
-#define RIGHT_WHEEL_NP_PIN 17
-#define RIGHT_WHEEL_NN_PIN 5
-#define RIGHT_WHEEL_VEL_PIN 16
+#define RIGHT_WHEEL_IN1_PIN 21
+#define RIGHT_WHEEL_IN2_PIN 19
+#define RIGHT_WHEEL_VEL_PIN 18
 
 #define FRONT_SENSOR_TRIG_PIN 22
 #define FRONT_SENSOR_ECHO_PIN 23
@@ -38,8 +28,8 @@
 #define BUZZER_PIN 2
 #define RESET_PIN 4
 
-Motor leftWheel(LEFT_WHEEL_NP_PIN, LEFT_WHEEL_NN_PIN, LEFT_WHEEL_VEL_PIN, false);
-Motor rightWheel(RIGHT_WHEEL_NP_PIN, RIGHT_WHEEL_NN_PIN, RIGHT_WHEEL_VEL_PIN, true);
+Motor leftWheel(LEFT_WHEEL_IN1_PIN, LEFT_WHEEL_IN2_PIN, LEFT_WHEEL_VEL_PIN, false);
+Motor rightWheel(RIGHT_WHEEL_IN1_PIN, RIGHT_WHEEL_IN2_PIN, RIGHT_WHEEL_VEL_PIN, false);
 
 DistanceSensor frontSensor(FRONT_SENSOR_TRIG_PIN, FRONT_SENSOR_ECHO_PIN);
 
@@ -240,16 +230,84 @@ void onEventHandler(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEve
 
 // !! Métodos do lifecycle do microcontrolador !!
 
+void reset(void *)
+{
+	Serial.printf("[Reset] Iniciando tarefa no core %i\n", xPortGetCoreID());
+	while (true)
+	{
+		if (digitalRead(RESET_PIN) == LOW)
+		{
+			Serial.println("[Reset] Reset pressionado!! Apagando memoria em 12 segundos.");
+
+			for (int x = 0; x < 10; x++)
+			{
+				digitalWrite(BUZZER_PIN, HIGH);
+				vTaskDelay(200);
+				digitalWrite(BUZZER_PIN, LOW);
+				vTaskDelay(1000);
+			}
+
+			preferences.clear();
+			ESP.restart();
+		}
+	}
+}
+
+void readSensorsTask(void *)
+{
+	Serial.printf("[ReadSensors] Iniciando tarefa no core %i\n", xPortGetCoreID());
+	while (true)
+	{
+		// Envia para os clientes as leituras dos sensores em cm
+		doc["frontSensor"] = frontSensor.readDistance();
+
+		String obj = "";
+		serializeJson(doc, obj);
+		ws.textAll(obj);
+
+		delay(100);
+	}
+}
+
+void sensorsAlarmTask(void *)
+{
+	Serial.printf("[SensorsAlarm] Iniciando tarefa no core %i\n", xPortGetCoreID());
+	while (true)
+	{
+		// Alerta com o buzzer dependendo da distância do sensor
+		if (doc["frontSensor"] <= 12)
+		{
+			analogWrite(BUZZER_PIN, 120);
+			delay(100);
+			analogWrite(BUZZER_PIN, LOW);
+		}
+		else if (doc["frontSensor"] > 12 && doc["frontSensor"] <= 20)
+		{
+			analogWrite(BUZZER_PIN, 120);
+			delay(200);
+			analogWrite(BUZZER_PIN, LOW);
+		}
+		else if (doc["frontSensor"] > 20 && doc["frontSensor"] <= 28)
+		{
+			analogWrite(BUZZER_PIN, 120);
+			delay(400);
+			analogWrite(BUZZER_PIN, LOW);
+		}
+	}
+}
+
 void setup()
 {
 	Serial.begin(115200);
 	preferences.begin("prefs", false);
 
-	// Inicia o pino do buzzer
 	pinMode(BUZZER_PIN, OUTPUT);
-
-	// Inicia o pino do reset
 	pinMode(RESET_PIN, INPUT_PULLUP);
+
+	// Inicia tarefas
+	xTaskCreatePinnedToCore(reset, "Reset", 1000, NULL, 0, NULL, 0);
+	xTaskCreatePinnedToCore(readSensorsTask, "ReadSensors", 10000, NULL, 0, NULL, 0);
+	xTaskCreatePinnedToCore(sensorsAlarmTask, "SensorsAlarm", 10000, NULL, 0, NULL, 0);
 
 	// SETUP_DONE corresponde a existência de SSID && PASS
 	SETUP_DONE = preferences.getBool(PREF_SETUP_KEY, false);
@@ -284,17 +342,6 @@ void setup()
 		}
 	}
 
-	// Inicia o serviço de descobrimento do carrinho
-	if (!MDNS.begin(DEVICE_NAME))
-	{
-		Serial.println("[Setup] Não foi possível iniciar o servico de descobrimento.");
-	}
-	else
-	{
-		Serial.println("[Setup] Servico de descobrimento iniciado.");
-		MDNS.addService(SERVICE_NAME, SERVICE_PROTOCOL, SERVICE_PORT);
-	}
-
 	// Remove os handlers do Captive Server
 	server.reset();
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *req)
@@ -311,52 +358,6 @@ void setup()
 
 void loop()
 {
-	// Caso o botão reset seja pressionado, limpa a memória do ESP e reinicia
-	if (digitalRead(RESET_PIN) == LOW)
-	{
-		Serial.println("[Loop] Reset pressionado!! Apagando memoria em 10 segundos.");
-
-		for (int x = 0; x < 10; x++)
-		{
-			digitalWrite(BUZZER_PIN, HIGH);
-			delay(200);
-			digitalWrite(BUZZER_PIN, LOW);
-			delay(1000);
-		}
-
-		preferences.clear();
-		ESP.restart();
-		return;
-	}
-
 	ws.cleanupClients();
-
-	// Envia para os clientes as leituras dos sensores em cm
-	doc["frontSensor"] = frontSensor.readDistance();
-
-	String obj = "";
-	serializeJson(doc, obj);
-	ws.textAll(obj);
-
-	// Alerta com o buzzer dependendo da distância do sensor
-	if (doc["frontSensor"] <= 12)
-	{
-		analogWrite(BUZZER_PIN, 120);
-		delay(100);
-		analogWrite(BUZZER_PIN, LOW);
-	}
-	else if (doc["frontSensor"] > 12 && doc["frontSensor"] <= 20)
-	{
-		analogWrite(BUZZER_PIN, 120);
-		delay(200);
-		analogWrite(BUZZER_PIN, LOW);
-	}
-	else if (doc["frontSensor"] > 20 && doc["frontSensor"] <= 28)
-	{
-		analogWrite(BUZZER_PIN, 120);
-		delay(400);
-		analogWrite(BUZZER_PIN, LOW);
-	}
-
-	delay(200);
+	delay(100);
 }
