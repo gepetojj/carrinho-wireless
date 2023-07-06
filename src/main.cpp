@@ -39,6 +39,7 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 Preferences preferences;
 
+u_int16_t MOTORS_VELOCITY = 255;
 bool SETUP_DONE;
 bool TRY_CONNECTION;
 String SSID;
@@ -166,14 +167,14 @@ void onDataHandler(void *arg, uint8_t *data, size_t len)
 			}
 
 			Serial.println("[Motors] Movimentando motores para frente.");
-			leftWheel.moveForward();
-			rightWheel.moveForward();
+			leftWheel.moveForward(MOTORS_VELOCITY);
+			rightWheel.moveForward(MOTORS_VELOCITY);
 		}
 		else if (strcmp((char *)data, "backward") == 0)
 		{
 			Serial.println("[Motors] Movimentando motores para tras.");
-			leftWheel.moveBackward();
-			rightWheel.moveBackward();
+			leftWheel.moveBackward(MOTORS_VELOCITY);
+			rightWheel.moveBackward(MOTORS_VELOCITY);
 		}
 		else if (strcmp((char *)data, "right") == 0)
 		{
@@ -186,8 +187,8 @@ void onDataHandler(void *arg, uint8_t *data, size_t len)
 			}
 
 			Serial.println("[Motors] Movimentando motores para a direita.");
-			leftWheel.moveForward();
-			rightWheel.moveBackward();
+			leftWheel.moveForward(MOTORS_VELOCITY);
+			rightWheel.moveBackward(MOTORS_VELOCITY);
 		}
 		else if (strcmp((char *)data, "left") == 0)
 		{
@@ -200,8 +201,8 @@ void onDataHandler(void *arg, uint8_t *data, size_t len)
 			}
 
 			Serial.println("[Motors] Movimentando motores para a esquerda.");
-			leftWheel.moveBackward();
-			rightWheel.moveForward();
+			leftWheel.moveBackward(MOTORS_VELOCITY);
+			rightWheel.moveForward(MOTORS_VELOCITY);
 		}
 		else if (strcmp((char *)data, "stop") == 0)
 		{
@@ -235,7 +236,7 @@ void reset(void *)
 	Serial.printf("[Reset] Iniciando tarefa no core %i\n", xPortGetCoreID());
 	while (true)
 	{
-		if (digitalRead(RESET_PIN) == LOW)
+		if (digitalRead(RESET_PIN) == HIGH)
 		{
 			Serial.println("[Reset] Reset pressionado!! Apagando memoria em 12 segundos.");
 
@@ -265,7 +266,7 @@ void readSensorsTask(void *)
 		serializeJson(doc, obj);
 		ws.textAll(obj);
 
-		delay(100);
+		vTaskDelay(100);
 	}
 }
 
@@ -278,19 +279,19 @@ void sensorsAlarmTask(void *)
 		if (doc["frontSensor"] <= 12)
 		{
 			analogWrite(BUZZER_PIN, 120);
-			delay(100);
+			vTaskDelay(100);
 			analogWrite(BUZZER_PIN, LOW);
 		}
 		else if (doc["frontSensor"] > 12 && doc["frontSensor"] <= 20)
 		{
 			analogWrite(BUZZER_PIN, 120);
-			delay(200);
+			vTaskDelay(200);
 			analogWrite(BUZZER_PIN, LOW);
 		}
 		else if (doc["frontSensor"] > 20 && doc["frontSensor"] <= 28)
 		{
 			analogWrite(BUZZER_PIN, 120);
-			delay(400);
+			vTaskDelay(400);
 			analogWrite(BUZZER_PIN, LOW);
 		}
 	}
@@ -302,12 +303,12 @@ void setup()
 	preferences.begin("prefs", false);
 
 	pinMode(BUZZER_PIN, OUTPUT);
-	pinMode(RESET_PIN, INPUT_PULLUP);
+	pinMode(RESET_PIN, INPUT_PULLDOWN);
 
 	// Inicia tarefas
-	xTaskCreatePinnedToCore(reset, "Reset", 1000, NULL, 0, NULL, 0);
-	xTaskCreatePinnedToCore(readSensorsTask, "ReadSensors", 10000, NULL, 0, NULL, 0);
-	xTaskCreatePinnedToCore(sensorsAlarmTask, "SensorsAlarm", 10000, NULL, 0, NULL, 0);
+	xTaskCreatePinnedToCore(reset, "Reset", 4000, NULL, 0, NULL, 0);
+	xTaskCreatePinnedToCore(readSensorsTask, "ReadSensors", 8000, NULL, 0, NULL, 0);
+	xTaskCreatePinnedToCore(sensorsAlarmTask, "SensorsAlarm", 8000, NULL, 0, NULL, 0);
 
 	// SETUP_DONE corresponde a existência de SSID && PASS
 	SETUP_DONE = preferences.getBool(PREF_SETUP_KEY, false);
@@ -346,6 +347,16 @@ void setup()
 	server.reset();
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *req)
 			  { req->send_P(200, "text/html", MAIN_PAGE); });
+	server.on("/changeVel", HTTP_GET, [](AsyncWebServerRequest *req)
+			  {
+		if (req->hasParam("vel")) {
+			const int velocity = std::atoi(req->getParam("vel")->value().c_str());
+			MOTORS_VELOCITY = 255 * velocity / 100;
+			Serial.printf("[Motors] Velocidade alterada para %i\n", MOTORS_VELOCITY);
+			req->send(200, "text/plain", "Seus dados foram recebidos.");
+		} else {
+			req->send(400, "text/plain", "Velocidade não foi recebido, tente novamente.");
+		} });
 	server.begin();
 
 	// Inicializa o servidor WebSocket
