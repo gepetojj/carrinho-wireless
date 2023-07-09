@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 #include "esp32-hal-gpio.h"
-#include "motor.hh"
+#include "Motor.hh"
 
 Motor::Motor(int npPin, int nnPin, int velPin, bool invert)
 {

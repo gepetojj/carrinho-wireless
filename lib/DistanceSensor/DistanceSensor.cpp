@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 #include "esp32-hal-gpio.h"
-#include "distanceSensor.hh"
+#include "DistanceSensor.hh"
 
 DistanceSensor::DistanceSensor(int trigPin, int echoPin)
 {
@@ -12,7 +12,8 @@ DistanceSensor::DistanceSensor(int trigPin, int echoPin)
     pinMode(echoPin, INPUT);
 }
 
-float DistanceSensor::readDistance() {
+float DistanceSensor::readDistance()
+{
     digitalWrite(this->trigPin, HIGH);
     delayMicroseconds(10);
     digitalWrite(this->trigPin, LOW);

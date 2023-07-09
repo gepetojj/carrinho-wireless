@@ -3,10 +3,10 @@
 #include <DNSServer.h>
 #include <Preferences.h>
 #include <WiFi.h>
+#include <DistanceSensor.hh>
+#include <Motor.hh>
 
 #include "ESPAsyncWebServer.h"
-#include "distanceSensor.hh"
-#include "motor.hh"
 #include "pages.hh"
 
 #define DEVICE_NAME "Carrinho Wireless"
