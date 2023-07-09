@@ -193,8 +193,8 @@ void onWSMessageHandler(void *arg, uint8_t *data, size_t len)
 				return;
 			}
 
-			leftWheel.moveForward(MOTORS_VELOCITY);
-			rightWheel.moveBackward(MOTORS_VELOCITY);
+			leftWheel.moveBackward(MOTORS_VELOCITY);
+			rightWheel.moveForward(MOTORS_VELOCITY);
 		}
 		else if (strcmp((char *)data, "left") == 0)
 		{
@@ -206,8 +206,8 @@ void onWSMessageHandler(void *arg, uint8_t *data, size_t len)
 				return;
 			}
 
-			leftWheel.moveBackward(MOTORS_VELOCITY);
-			rightWheel.moveForward(MOTORS_VELOCITY);
+			leftWheel.moveForward(MOTORS_VELOCITY);
+			rightWheel.moveBackward(MOTORS_VELOCITY);
 		}
 		else if (strcmp((char *)data, "stop") == 0)
 		{
@@ -269,8 +269,8 @@ void onENMessageHandler(const uint8_t *mac, const uint8_t *data, int len)
 			return;
 		}
 
-		leftWheel.moveForward(MOTORS_VELOCITY);
-		rightWheel.moveBackward(MOTORS_VELOCITY);
+		leftWheel.moveBackward(MOTORS_VELOCITY);
+		rightWheel.moveForward(MOTORS_VELOCITY);
 	}
 	else if (CONTROLLER_PAYLOAD.direction == "left")
 	{
@@ -282,8 +282,8 @@ void onENMessageHandler(const uint8_t *mac, const uint8_t *data, int len)
 			return;
 		}
 
-		leftWheel.moveBackward(MOTORS_VELOCITY);
-		rightWheel.moveForward(MOTORS_VELOCITY);
+		leftWheel.moveForward(MOTORS_VELOCITY);
+		rightWheel.moveBackward(MOTORS_VELOCITY);
 	}
 	else if (CONTROLLER_PAYLOAD.direction == "stop")
 	{
