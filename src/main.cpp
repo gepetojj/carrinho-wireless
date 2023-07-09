@@ -1,10 +1,11 @@
 #include <ArduinoJSON.h>
 #include <AsyncTCP.h>
 #include <DNSServer.h>
-#include <Preferences.h>
-#include <WiFi.h>
+#include <esp_now.h>
 #include <DistanceSensor.hh>
 #include <Motor.hh>
+#include <Preferences.h>
+#include <WiFi.h>
 
 #include "ESPAsyncWebServer.h"
 #include "pages.hh"
@@ -39,11 +40,21 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 Preferences preferences;
 
-u_int16_t MOTORS_VELOCITY = 255;
 bool SETUP_DONE;
 bool TRY_CONNECTION;
 String SSID;
 String PASS;
+
+u_int16_t MOTORS_VELOCITY = 255;
+u_int8_t FORWARD_MOVEMENT_LIMIT = 18;
+u_int8_t SIDEWAYS_MOVEMENT_LIMIT = 11;
+
+typedef struct ControllerPayload
+{
+	String direction;
+} ControllerPayload;
+
+ControllerPayload CONTROLLER_PAYLOAD;
 
 // !! Métodos auxiliares para conexão ao WiFi !!
 
@@ -146,7 +157,7 @@ void tryWiFiConnection()
 
 // !! Métodos do WebSocket !!
 
-void onDataHandler(void *arg, uint8_t *data, size_t len)
+void onWSMessageHandler(void *arg, uint8_t *data, size_t len)
 {
 	AwsFrameInfo *info = (AwsFrameInfo *)arg;
 
@@ -156,7 +167,7 @@ void onDataHandler(void *arg, uint8_t *data, size_t len)
 		data[len] = 0;
 		if (strcmp((char *)data, "forward") == 0)
 		{
-			if (doc["frontSensor"] <= 16)
+			if (doc["frontSensor"] <= FORWARD_MOVEMENT_LIMIT)
 			{
 				Serial.println("[Motors] Movimento para frente cancelado (distancia).");
 				leftWheel.stopMovement();
@@ -164,19 +175,17 @@ void onDataHandler(void *arg, uint8_t *data, size_t len)
 				return;
 			}
 
-			Serial.println("[Motors] Movimentando motores para frente.");
 			leftWheel.moveForward(MOTORS_VELOCITY);
 			rightWheel.moveForward(MOTORS_VELOCITY);
 		}
 		else if (strcmp((char *)data, "backward") == 0)
 		{
-			Serial.println("[Motors] Movimentando motores para tras.");
 			leftWheel.moveBackward(MOTORS_VELOCITY);
 			rightWheel.moveBackward(MOTORS_VELOCITY);
 		}
 		else if (strcmp((char *)data, "right") == 0)
 		{
-			if (doc["frontSensor"] <= 9)
+			if (doc["frontSensor"] <= SIDEWAYS_MOVEMENT_LIMIT)
 			{
 				Serial.println("[Motors] Movimento para a direita cancelado (distancia).");
 				leftWheel.stopMovement();
@@ -184,13 +193,12 @@ void onDataHandler(void *arg, uint8_t *data, size_t len)
 				return;
 			}
 
-			Serial.println("[Motors] Movimentando motores para a direita.");
 			leftWheel.moveForward(MOTORS_VELOCITY);
 			rightWheel.moveBackward(MOTORS_VELOCITY);
 		}
 		else if (strcmp((char *)data, "left") == 0)
 		{
-			if (doc["frontSensor"] <= 9)
+			if (doc["frontSensor"] <= SIDEWAYS_MOVEMENT_LIMIT)
 			{
 				Serial.println("[Motors] Movimento para a esquerda cancelado (distancia).");
 				leftWheel.stopMovement();
@@ -198,7 +206,6 @@ void onDataHandler(void *arg, uint8_t *data, size_t len)
 				return;
 			}
 
-			Serial.println("[Motors] Movimentando motores para a esquerda.");
 			leftWheel.moveBackward(MOTORS_VELOCITY);
 			rightWheel.moveForward(MOTORS_VELOCITY);
 		}
@@ -215,7 +222,7 @@ void onEventHandler(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEve
 	switch (type)
 	{
 	case WS_EVT_DATA:
-		onDataHandler(arg, data, len);
+		onWSMessageHandler(arg, data, len);
 		break;
 
 	case WS_EVT_ERROR:
@@ -224,6 +231,64 @@ void onEventHandler(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEve
 
 	default:
 		break;
+	}
+}
+
+// !! Métodos do ESP-NOW !!
+
+void onENMessageHandler(const uint8_t *mac, const uint8_t *data, int len)
+{
+	memcpy(&CONTROLLER_PAYLOAD, data, sizeof(CONTROLLER_PAYLOAD));
+	Serial.printf("[ESP-NOW] Recebido payload de %i bytes do controle remoto.\n", len);
+
+	if (CONTROLLER_PAYLOAD.direction == "forward")
+	{
+		if (doc["frontSensor"] <= FORWARD_MOVEMENT_LIMIT)
+		{
+			Serial.println("[Motors] Movimento para frente cancelado (distancia).");
+			leftWheel.stopMovement();
+			rightWheel.stopMovement();
+			return;
+		}
+
+		leftWheel.moveForward(MOTORS_VELOCITY);
+		rightWheel.moveForward(MOTORS_VELOCITY);
+	}
+	else if (CONTROLLER_PAYLOAD.direction == "backward")
+	{
+		leftWheel.moveBackward(MOTORS_VELOCITY);
+		rightWheel.moveBackward(MOTORS_VELOCITY);
+	}
+	else if (CONTROLLER_PAYLOAD.direction == "right")
+	{
+		if (doc["frontSensor"] <= SIDEWAYS_MOVEMENT_LIMIT)
+		{
+			Serial.println("[Motors] Movimento para a direita cancelado (distancia).");
+			leftWheel.stopMovement();
+			rightWheel.stopMovement();
+			return;
+		}
+
+		leftWheel.moveForward(MOTORS_VELOCITY);
+		rightWheel.moveBackward(MOTORS_VELOCITY);
+	}
+	else if (CONTROLLER_PAYLOAD.direction == "left")
+	{
+		if (doc["frontSensor"] <= SIDEWAYS_MOVEMENT_LIMIT)
+		{
+			Serial.println("[Motors] Movimento para a esquerda cancelado (distancia).");
+			leftWheel.stopMovement();
+			rightWheel.stopMovement();
+			return;
+		}
+
+		leftWheel.moveBackward(MOTORS_VELOCITY);
+		rightWheel.moveForward(MOTORS_VELOCITY);
+	}
+	else if (CONTROLLER_PAYLOAD.direction == "stop")
+	{
+		leftWheel.stopMovement();
+		rightWheel.stopMovement();
 	}
 }
 
@@ -249,22 +314,6 @@ void reset(void *)
 			preferences.clear();
 			ESP.restart();
 		}
-	}
-}
-
-void readSensorsTask(void *)
-{
-	Serial.printf("[ReadSensors] Iniciando tarefa no core %i\n", xPortGetCoreID());
-	while (true)
-	{
-		// Envia para os clientes as leituras dos sensores em cm
-		doc["frontSensor"] = frontSensor.readDistance();
-
-		String obj = "";
-		serializeJson(doc, obj);
-		ws.textAll(obj);
-
-		vTaskDelay(100);
 	}
 }
 
@@ -305,7 +354,6 @@ void setup()
 
 	// Inicia tarefas
 	xTaskCreatePinnedToCore(reset, "Reset", 4000, NULL, 0, NULL, 0);
-	xTaskCreatePinnedToCore(readSensorsTask, "ReadSensors", 8000, NULL, 0, NULL, 0);
 	xTaskCreatePinnedToCore(sensorsAlarmTask, "SensorsAlarm", 8000, NULL, 0, NULL, 0);
 
 	// SETUP_DONE corresponde a existência de SSID && PASS
@@ -363,10 +411,29 @@ void setup()
 
 	Serial.print("[Setup] Conectado. IP: ");
 	Serial.println(WiFi.localIP());
+	Serial.print("[Setup] MAC: ");
+	Serial.println(WiFi.macAddress());
+
+	// Inicializa o ESP-NOW
+	if (esp_now_init() != ESP_OK)
+	{
+		Serial.println("[Setup] Erro iniciando o procotolo ESP-NOW.");
+		return;
+	}
+
+	esp_now_register_recv_cb(onENMessageHandler);
 }
 
 void loop()
 {
 	ws.cleanupClients();
+
+	// Envia para os clientes as leituras dos sensores em cm
+	doc["frontSensor"] = frontSensor.readDistance();
+
+	String obj = "";
+	serializeJson(doc, obj);
+	ws.textAll(obj);
+
 	delay(100);
 }

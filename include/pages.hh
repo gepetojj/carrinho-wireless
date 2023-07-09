@@ -377,9 +377,11 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 				fetch(`/changeVel?vel=${vel}`);
 			};
 
+			let lastDir;
 			setInterval(() => {
 				const dir = joystick.GetDir();
-				if (!socket.readyState) return;
+				if (!socket.readyState || lastDir == dir) return;
+				lastDir = dir;
 
 				if (dir === "N" || dir === "NE" || dir === "NW") {
 					socket.send("forward");
@@ -392,7 +394,7 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 				} else {
 					socket.send("stop");
 				}
-			}, 100);
+			}, 20);
 		</script>
 	</body>
 </html>
