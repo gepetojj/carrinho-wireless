@@ -80,9 +80,6 @@ void setupCaptiveServer()
 		} else {
 			req->send(400, "text/plain", "SSID e/ou Senha não foram recebidos, tente novamente.");
 		} });
-
-	server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER);
-	server.begin();
 }
 
 void startCaptivePortal()
@@ -92,10 +89,11 @@ void startCaptivePortal()
 	Serial.println("[CaptivePortal] Modo WiFi alterado para AP.");
 
 	setupCaptiveServer();
-	Serial.println("[CaptivePortal] Servidor iniciado.");
-
 	dns.start(53, "*", WiFi.softAPIP());
-	Serial.println("[CaptivePortal] DNS iniciado.");
+	server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER);
+	server.begin();
+
+	Serial.println("[CaptivePortal] Servidor e DNS iniciados.");
 }
 
 void tryWiFiConnection()
