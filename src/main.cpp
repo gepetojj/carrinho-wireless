@@ -51,7 +51,7 @@ u_int8_t SIDEWAYS_MOVEMENT_LIMIT = 11;
 
 typedef struct ControllerPayload
 {
-	String direction;
+	char* direction;
 } ControllerPayload;
 
 ControllerPayload CONTROLLER_PAYLOAD;
