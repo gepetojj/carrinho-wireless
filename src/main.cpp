@@ -46,12 +46,11 @@ String SSID;
 String PASS;
 
 u_int16_t MOTORS_VELOCITY = 255;
-u_int8_t FORWARD_MOVEMENT_LIMIT = 18;
-u_int8_t SIDEWAYS_MOVEMENT_LIMIT = 11;
+u_int8_t FORWARD_MOVEMENT_LIMIT = 17;
 
 typedef struct ControllerPayload
 {
-	char* direction;
+	uint8_t direction;
 } ControllerPayload;
 
 ControllerPayload CONTROLLER_PAYLOAD;
@@ -109,7 +108,9 @@ void startCaptivePortal()
 
 void tryWiFiConnection()
 {
+	// WiFi.mode(WIFI_AP_STA);
 	WiFi.mode(WIFI_STA);
+	WiFi.setSleep(false);
 	Serial.println("[WiFi] Modo WiFi alterado para STA.");
 	Serial.print("[WiFi] Tentando conectar-se ao SSID: ");
 	Serial.println(SSID);
@@ -167,14 +168,6 @@ void onWSMessageHandler(void *arg, uint8_t *data, size_t len)
 		data[len] = 0;
 		if (strcmp((char *)data, "forward") == 0)
 		{
-			if (doc["frontSensor"] <= FORWARD_MOVEMENT_LIMIT)
-			{
-				Serial.println("[Motors] Movimento para frente cancelado (distancia).");
-				leftWheel.stopMovement();
-				rightWheel.stopMovement();
-				return;
-			}
-
 			leftWheel.moveForward(MOTORS_VELOCITY);
 			rightWheel.moveForward(MOTORS_VELOCITY);
 		}
@@ -185,27 +178,11 @@ void onWSMessageHandler(void *arg, uint8_t *data, size_t len)
 		}
 		else if (strcmp((char *)data, "right") == 0)
 		{
-			if (doc["frontSensor"] <= SIDEWAYS_MOVEMENT_LIMIT)
-			{
-				Serial.println("[Motors] Movimento para a direita cancelado (distancia).");
-				leftWheel.stopMovement();
-				rightWheel.stopMovement();
-				return;
-			}
-
 			leftWheel.moveBackward(MOTORS_VELOCITY);
 			rightWheel.moveForward(MOTORS_VELOCITY);
 		}
 		else if (strcmp((char *)data, "left") == 0)
 		{
-			if (doc["frontSensor"] <= SIDEWAYS_MOVEMENT_LIMIT)
-			{
-				Serial.println("[Motors] Movimento para a esquerda cancelado (distancia).");
-				leftWheel.stopMovement();
-				rightWheel.stopMovement();
-				return;
-			}
-
 			leftWheel.moveForward(MOTORS_VELOCITY);
 			rightWheel.moveBackward(MOTORS_VELOCITY);
 		}
@@ -241,51 +218,28 @@ void onENMessageHandler(const uint8_t *mac, const uint8_t *data, int len)
 	memcpy(&CONTROLLER_PAYLOAD, data, sizeof(CONTROLLER_PAYLOAD));
 	Serial.printf("[ESP-NOW] Recebido payload de %i bytes do controle remoto.\n", len);
 
-	if (CONTROLLER_PAYLOAD.direction == "forward")
+	if (CONTROLLER_PAYLOAD.direction == 0x04)
 	{
-		if (doc["frontSensor"] <= FORWARD_MOVEMENT_LIMIT)
-		{
-			Serial.println("[Motors] Movimento para frente cancelado (distancia).");
-			leftWheel.stopMovement();
-			rightWheel.stopMovement();
-			return;
-		}
-
 		leftWheel.moveForward(MOTORS_VELOCITY);
 		rightWheel.moveForward(MOTORS_VELOCITY);
 	}
-	else if (CONTROLLER_PAYLOAD.direction == "backward")
+	else if (CONTROLLER_PAYLOAD.direction == 0x08)
 	{
 		leftWheel.moveBackward(MOTORS_VELOCITY);
 		rightWheel.moveBackward(MOTORS_VELOCITY);
 	}
-	else if (CONTROLLER_PAYLOAD.direction == "right")
+	else if (CONTROLLER_PAYLOAD.direction == 0x02)
 	{
-		if (doc["frontSensor"] <= SIDEWAYS_MOVEMENT_LIMIT)
-		{
-			Serial.println("[Motors] Movimento para a direita cancelado (distancia).");
-			leftWheel.stopMovement();
-			rightWheel.stopMovement();
-			return;
-		}
 
 		leftWheel.moveBackward(MOTORS_VELOCITY);
 		rightWheel.moveForward(MOTORS_VELOCITY);
 	}
-	else if (CONTROLLER_PAYLOAD.direction == "left")
+	else if (CONTROLLER_PAYLOAD.direction == 0x01)
 	{
-		if (doc["frontSensor"] <= SIDEWAYS_MOVEMENT_LIMIT)
-		{
-			Serial.println("[Motors] Movimento para a esquerda cancelado (distancia).");
-			leftWheel.stopMovement();
-			rightWheel.stopMovement();
-			return;
-		}
-
 		leftWheel.moveForward(MOTORS_VELOCITY);
 		rightWheel.moveBackward(MOTORS_VELOCITY);
 	}
-	else if (CONTROLLER_PAYLOAD.direction == "stop")
+	else if (CONTROLLER_PAYLOAD.direction == 0x00)
 	{
 		leftWheel.stopMovement();
 		rightWheel.stopMovement();
@@ -322,23 +276,31 @@ void sensorsAlarmTask(void *)
 	Serial.printf("[SensorsAlarm] Iniciando tarefa no core %i\n", xPortGetCoreID());
 	while (true)
 	{
+		// Cancela movimento para frente se limite for atingido
+		if (doc["frontSensor"] <= FORWARD_MOVEMENT_LIMIT)
+		{
+			Serial.println("[Motors] Movimento para frente cancelado (distancia).");
+			leftWheel.stopMovement();
+			rightWheel.stopMovement();
+		}
+
 		// Alerta com o buzzer dependendo da distância do sensor
 		if (doc["frontSensor"] <= 12)
 		{
 			analogWrite(BUZZER_PIN, 120);
-			vTaskDelay(100);
+			vTaskDelay(100 / portTICK_PERIOD_MS);
 			analogWrite(BUZZER_PIN, LOW);
 		}
 		else if (doc["frontSensor"] > 12 && doc["frontSensor"] <= 20)
 		{
 			analogWrite(BUZZER_PIN, 120);
-			vTaskDelay(200);
+			vTaskDelay(200 / portTICK_PERIOD_MS);
 			analogWrite(BUZZER_PIN, LOW);
 		}
 		else if (doc["frontSensor"] > 20 && doc["frontSensor"] <= 28)
 		{
 			analogWrite(BUZZER_PIN, 120);
-			vTaskDelay(400);
+			vTaskDelay(400 / portTICK_PERIOD_MS);
 			analogWrite(BUZZER_PIN, LOW);
 		}
 	}
