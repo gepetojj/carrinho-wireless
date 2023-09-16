@@ -1,92 +1,5 @@
 #include <Arduino.h>
 
-const char CAPTIVE_PAGE[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
-<html lang="pt-br">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Configure a rede do carrinho</title>
-
-		<style>
-			body {
-				margin: 0;
-				width: 100wv;
-				height: 100vh;
-				display: flex;
-				flex-direction: column;
-				justify-content: center;
-				align-items: center;
-				font-family: "Trebuchet MS", Arial, sans-serif;
-				text-align: center;
-				padding: 0 1.5rem;
-			}
-
-			h1 {
-				margin-bottom: 0;
-			}
-
-			p {
-				width: 100%;
-				max-width: 35rem;
-				margin-bottom: 2rem;
-			}
-
-			form {
-				display: flex;
-				flex-direction: column;
-				width: 100%;
-				max-width: 30rem;
-				gap: 0.4rem;
-			}
-
-			select {
-				padding: 0.3rem 0.5rem;
-				outline-offset: 0.3rem;
-				outline-color: rgb(28, 156, 241);
-                border: 1px solid rgb(145, 145, 145);
-                border-radius: 0.2rem;
-			}
-
-			input {
-				padding: 0.3rem 0.5rem;
-                outline-offset: 0.3rem;
-				outline-color: rgb(28, 156, 241);
-                border: 1px solid rgb(145, 145, 145);
-                border-radius: 0.2rem;
-			}
-
-			button {
-				margin-top: 0.7rem;
-				padding: 0.5rem;
-				color: white;
-                background-color: rgb(28, 156, 241);
-				border: none;
-                border-radius: 0.2rem;
-                cursor: pointer;
-                transition: 200ms;
-			}
-
-            button:hover {
-                filter: brightness(95%);
-            }
-		</style>
-	</head>
-	<body>
-		<h1>Configure a rede do carrinho</h1>
-		<p>
-			Este procedimento é feito apenas uma vez, porém caso os dados do WiFi escolhido se
-			alterem, este procedimento será necessário novamente.
-		</p>
-		<form action="/set" method="get">
-			<input type="text" name="ssid" id="ssid" placeholder="SSID:" />
-			<input type="password" name="pass" id="pass" placeholder="Senha:" />
-			<button type="submit">Conectar</button>
-		</form>
-	</body>
-</html>
-)rawliteral";
-
 const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -395,6 +308,255 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 					socket.send("stop");
 				}
 			}, 20);
+		</script>
+	</body>
+</html>
+)rawliteral";
+
+const char CONSOLE_PAGE[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="pt-br">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>CONSOLE - Controle Remoto do Carrinho</title>
+
+		<style>
+			body {
+				margin: 0;
+				height: 100vh;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				font-family: "Trebuchet MS", Arial, sans-serif;
+				text-align: center;
+				padding: 0 1.5rem;
+			}
+
+			main {
+				height: 100vh;
+				display: flex;
+				gap: 10rem;
+			}
+
+			@media (max-width: 600px) {
+				main {
+					gap: 1rem;
+				}
+			}
+
+			#reset {
+				width: 100%;
+				padding: 1rem 0;
+				background-color: rgb(212, 52, 52);
+				border: none;
+				border-radius: 0.2rem;
+				cursor: pointer;
+				font-size: large;
+			}
+
+			#reset:hover {
+				background-color: rgb(190, 48, 48);
+			}
+
+			#reset:active {
+				background-color: rgb(170, 47, 47);
+			}
+
+			#espnow {
+				width: 100%;
+				padding: 1rem 0;
+				background-color: rgb(52, 103, 212);
+				border: none;
+				border-radius: 0.2rem;
+				cursor: pointer;
+				font-size: large;
+			}
+
+			#espnow:hover {
+				background-color: rgb(49, 95, 194);
+			}
+
+			#espnow:active {
+				background-color: rgb(43, 81, 163);
+			}
+
+			#stopmotors {
+				width: 100%;
+				padding: 1rem 0;
+				background-color: rgb(228, 193, 38);
+				border: none;
+				border-radius: 0.2rem;
+				cursor: pointer;
+				font-size: large;
+			}
+
+			#stopmotors:hover {
+				background-color: rgb(204, 173, 35);
+			}
+
+			#stopmotors:active {
+				background-color: rgb(182, 154, 30);
+			}
+
+			#alertbox {
+				display: none;
+				position: fixed;
+				top: 50%;
+				background-color: rgb(240, 240, 68);
+				padding: 1rem;
+				border: 1px solid rgb(173, 173, 33);
+				font-size: larger;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Painel de controle do Carrinho</h1>
+		<main>
+			<div>
+				<h2>Comunicação por WiFi: <span id="wifiMenuSelected"></span></h2>
+				<h2>Status do WiFi: <span id="wifiStatus"></span></h2>
+				<h2>Velocidade máxima dos motores: <span id="motorsVelocity">0</span></h2>
+				<h2>Clientes conectados: <span id="clients">0</span></h2>
+				<h2>Perda de pacotes: <span id="packetloss">Não disponível</span></h2>
+			</div>
+			<div>
+				<h2>RAM total: <span id="espHeap">0</span></h2>
+				<h2>RAM livre: <span id="espFreeHeap">0</span></h2>
+				<h2>RAM usada: <span id="espUsedHeap">0</span></h2>
+				<h2>IP: <span id="ip"></span></h2>
+				<h2>MAC: <span id="mac"></span></h2>
+			</div>
+			<div style="display: flex; flex-direction: column; gap: 1rem">
+				<h2>Sistema irá resetar: <span id="erasingMemory"></span></h2>
+				<button id="reset">Iniciar reset</button>
+				<button id="espnow">Trocar para ESP-NOW</button>
+				<button id="stopmotors">Parar motores</button>
+			</div>
+		</main>
+		<div id="alertbox"></div>
+
+		<script>
+			const WIFI_STATUS_ENUM = {
+				255: "Compatível",
+				0: "Em espera",
+				1: "SSID indisponível",
+				2: "Scan completo",
+				3: "Conectado",
+				4: "Conexão falhou",
+				5: "Conexão perdida",
+				6: "Senha incorreta",
+				7: "Desconectado",
+			};
+
+			function formatBytes(bytes, decimalPoint) {
+				if (bytes == 0) return "0 Bytes";
+				var k = 1000,
+					dm = decimalPoint || 2,
+					sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"],
+					i = Math.floor(Math.log(bytes) / Math.log(k));
+				return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+			}
+
+			let lastPacketMS = new Date();
+			let diffAverage = 0;
+			setInterval(() => {
+				const packetMS = new Date();
+				let diff = Math.abs(lastPacketMS - packetMS);
+				diffAverage = (diffAverage + diff) / 2;
+				const percentage = (diffAverage * 100) / 1000;
+
+				const packetloss = document.getElementById("packetloss");
+				packetloss.innerText = `${new Intl.NumberFormat("pt-BR", {
+					style: "decimal",
+					maximumFractionDigits: 1,
+				}).format(percentage)}% (${new Intl.NumberFormat("pt-BR", {
+					style: "decimal",
+					maximumFractionDigits: 1,
+				}).format(diffAverage)})`;
+
+				if (diffAverage < 200) {
+					packetloss.style.color = "green";
+				}
+				if (diffAverage > 200 && diffAverage < 800) {
+					packetloss.style.color = "yellow";
+				}
+				if (diffAverage > 800) {
+					packetloss.style.color = "red";
+				}
+			}, 100);
+		</script>
+
+		<script defer>
+			const socket = new WebSocket(`ws://${window.location.host}/ws`);
+			const alertbox = document.getElementById("alertbox");
+			socket.onopen = () => {
+				console.log("Conexão WebSocket aberta com sucesso.");
+				alertbox.style.display = "none";
+			};
+
+			socket.onmessage = (event) => {
+				lastPacketMS = new Date();
+				const data = JSON.parse(event.data);
+
+				const wifiMenuSelected = data.wifiMenuSelected;
+				const wifiStatus = data.wifiStatus;
+				const motorsVelocity = data.motorsVelocity;
+				const motorsVelocityPercentage = new Intl.NumberFormat("pt-BR", {
+					style: "decimal",
+					maximumFractionDigits: 1,
+				}).format((motorsVelocity * 100) / 255);
+				const clients = data.clients;
+				const espHeap = data.espHeap;
+				const espFreeHeap = data.espFreeHeap;
+				const espUsedHeap = espHeap - espFreeHeap;
+				const ip = data.ip;
+				const mac = data.mac;
+				const erasingMemory = data.erasingMemory;
+
+				document.getElementById("wifiMenuSelected").innerText = wifiMenuSelected
+					? "Ativada"
+					: "Desativada";
+				document.getElementById(
+					"motorsVelocity"
+				).innerText = `${motorsVelocity} (${motorsVelocityPercentage}%)`;
+				document.getElementById("wifiStatus").innerText = WIFI_STATUS_ENUM[wifiStatus];
+				document.getElementById("clients").innerText = clients;
+				document.getElementById("espHeap").innerText = formatBytes(espHeap);
+				document.getElementById("espFreeHeap").innerText = formatBytes(espFreeHeap);
+				document.getElementById("espUsedHeap").innerText = formatBytes(espUsedHeap);
+				document.getElementById("ip").innerText = ip;
+				document.getElementById("mac").innerText = mac;
+
+				const erasing = document.getElementById("erasingMemory");
+				erasing.innerText = erasingMemory ? "SIM" : "Não";
+				erasing.style.color = erasingMemory ? "red" : "green";
+				erasing.style.scale = "2";
+			};
+
+			socket.onclose = () => {
+				console.info("A conexão WebSocket foi encerrada.");
+				alertbox.style.display = "inline";
+				alertbox.innerText = "Conexão encerrada!";
+			};
+
+			socket.onerror = (error) => {
+				console.error(`Houve um erro com a conexão WebSocket: ${error.error}`);
+				alertbox.style.display = "inline";
+				alertbox.innerText = `Falha na conexão: ${error.error}`;
+			};
+
+			document.getElementById("reset").onclick = () => {
+				socket.send("reset");
+			};
+
+			document.getElementById("espnow").onclick = () => {
+				socket.send("enmenu");
+			};
+
+			document.getElementById("stopmotors").onclick = () => {
+				socket.send("stop");
+			};
 		</script>
 	</body>
 </html>
