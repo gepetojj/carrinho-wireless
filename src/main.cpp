@@ -211,9 +211,9 @@ void reset(void *)
 		if (digitalRead(RESET_PIN) == HIGH || ERASING_MEMORY == true)
 		{
 			ERASING_MEMORY = true;
-			Serial.println("[Reset] Reset acionado!! Apagando memoria em 12 segundos.");
+			Serial.println("[Reset] Reset acionado!! Apagando memoria em 3 segundos.");
 
-			for (int x = 0; x < 10; x++)
+			for (int x = 0; x < 3; x++)
 			{
 				digitalWrite(BUZZER_PIN, HIGH);
 				vTaskDelay(200);
